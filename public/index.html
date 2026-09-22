@@ -2,45 +2,219 @@
 <html lang="mn">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plickers System - Нэвтрэх</title>
   <style>
-    body { font-family: Arial, sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-    .card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 320px; }
-    h2 { text-align: center; color: #333; margin-top: 0; }
-    input, select, button { width: 100%; padding: 10px; margin-top: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
-    button { background: #007bff; color: white; border: none; font-weight: bold; cursor: pointer; }
-    button:hover { background: #0056b3; }
+    /* 1. Ерөнхий тохиргоо */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Arial, sans-serif;
+    }
+
+    body {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: #0f172a; /* Гүн хөх арын дэвсгэр */
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* 2. Арын хөдөлгөөнтэй өнгөт дүрсүүд */
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.6;
+      animation: floatAnimation 12s infinite alternate ease-in-out;
+    }
+
+    .orb-1 {
+      width: 350px;
+      height: 350px;
+      background: #6366f1; /* Нил ягаан */
+      top: 10%;
+      left: 15%;
+      animation-duration: 10s;
+    }
+
+    .orb-2 {
+      width: 400px;
+      height: 400px;
+      background: #ec4899; /* Ягаан */
+      bottom: 10%;
+      right: 15%;
+      animation-duration: 14s;
+    }
+
+    .orb-3 {
+      width: 280px;
+      height: 280px;
+      background: #06b6d4; /* Цэнхэр */
+      bottom: 20%;
+      left: 30%;
+      animation-duration: 12s;
+    }
+
+    /* CSS Анимаци - Дүрсүүд хөвөх хөдөлгөөн */
+    @keyframes floatAnimation {
+      0% {
+        transform: translate(0, 0) scale(1);
+      }
+      50% {
+        transform: translate(60px, -50px) scale(1.1);
+      }
+      100% {
+        transform: translate(-40px, 40px) scale(0.9);
+      }
+    }
+
+    /* 3. Шилэн эффект бүхий нэвтрэх карт */
+    .card {
+      position: relative;
+      z-index: 10;
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 40px 30px;
+      border-radius: 16px;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+      width: 340px;
+      color: white;
+      text-align: center;
+    }
+
+    h2 {
+      text-align: center;
+      color: #ffffff;
+      margin-bottom: 20px;
+      font-size: 24px;
+      font-weight: 600;
+    }
+
+    /* 4. Оруулах хэсгүүдийн загвар */
+    .input-group {
+      margin-top: 15px;
+      text-align: left;
+    }
+
+    .input-group label {
+      display: block;
+      font-size: 13px;
+      color: #cbd5e1;
+      margin-bottom: 6px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      box-sizing: border-box;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.05);
+      color: #ffffff;
+      border-radius: 8px;
+      outline: none;
+      transition: all 0.3s ease;
+      font-size: 14px;
+    }
+
+    input:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    input::placeholder {
+      color: #94a3b8;
+    }
+
+    /* 5. Товчлуур */
+    button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 25px;
+      background: linear-gradient(135deg, #6366f1, #ec4899);
+      color: white;
+      border: none;
+      font-weight: bold;
+      font-size: 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(236, 72, 153, 0.4);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
   </style>
 </head>
 <body>
+
+  <!-- Арын хөдөлгөөнтэй дүрсүүд -->
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+
+  <!-- Нэвтрэх карт -->
   <div class="card">
     <h2>Системд Нэвтрэх</h2>
-    <input type="text" id="username" placeholder="Хэрэглэгчийн нэр">
-    <input type="password" id="password" placeholder="Нууц үг">
+    
+    <div class="input-group">
+      <label for="username">Хэрэглэгчийн нэр</label>
+      <input type="text" id="username" placeholder="Хэрэглэгчийн нэр">
+    </div>
+
+    <div class="input-group">
+      <label for="password">Нууц үг</label>
+      <input type="password" id="password" placeholder="Нууц үг" onkeydown="if(event.key==='Enter') login()">
+    </div>
+
     <button onclick="login()">Нэвтрэх</button>
   </div>
 
   <script>
     async function login() {
-      const username = document.getElementById('username').value;
-      const password = document.getElementById('password').value;
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value.trim();
 
-      const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-      });
-      const data = await res.json();
+      if (!username || !password) {
+        alert('Хэрэглэгчийн нэр болон нууц үгээ оруулна уу!');
+        return;
+      }
 
-      if (data.success) {
-        localStorage.setItem('user', JSON.stringify(data));
-        if (data.role === 'ADMIN') {
-          window.location.href = 'admin.html';
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        
+        const data = await res.json();
+
+        if (data.success) {
+          localStorage.setItem('user', JSON.stringify(data));
+          
+          if (data.role === 'ADMIN') {
+            window.location.href = 'admin.html';
+          } else {
+            window.location.href = 'teacher.html';
+          }
         } else {
-          window.location.href = 'teacher.html';
+          alert(data.message || 'Нэвтрэх нэр эсвэл нууц үг буруу байна!');
         }
-      } else {
-        alert(data.message);
+      } catch (err) {
+        console.error('Нэвтрэхэд алдаа гарлаа:', err);
+        alert('Сервертэй холбогдоход алдаа гарлаа. Сервер ажиллаж байгаа эсэхийг шалгана уу.');
       }
     }
   </script>
