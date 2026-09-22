@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Асуултын Багц Удирдах</title>
+  <!-- Excel сан -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- QR код үүсгэх сан -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { padding: 20px; max-width: 950px; margin: 0 auto; background: #f4f6f9; color: #333; }
+    .card { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 25px; }
+    input, textarea, button { width: 100%; margin: 8px 0; padding: 10px; border-radius: 6px; border: 1px solid #ccc; font-size: 14px; }
+    button { background: #007bff; color: white; border: none; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+    button:hover { opacity: 0.9; }
+    .back-btn { background: #6c757d; margin-bottom: 15px; width: auto; padding: 8px 16px; }
+
+    .excel-tools { background: #eef5ff; border: 1px dashed #007bff; padding: 15px; border-radius: 8px; margin-top: 15px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .btn-play { background: #28a745; color: white; width: auto; padding: 6px 14px; border-radius: 4px; font-size: 13px; font-weight: bold; }
+    .btn-success { background: #28a745; width: auto; }
+    .btn-info { background: #17a2b8; width: auto; }
+    .btn-edit { background: #ffc107; color: #333; width: auto; padding: 6px 12px; margin-right: 5px; }
+    .btn-delete { background: #dc3545; color: white; width: auto; padding: 6px 12px; }
+    .btn-cancel { background: #6c757d; color: white; display: none; margin-top: 5px; }
+
+    .quiz-box { border: 1px solid #e0e0e0; border-radius: 8px; padding: 18px; margin-bottom: 20px; background: #fafafa; }
+    .quiz-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #007bff; padding-bottom: 10px; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
+    .action-btns { display: flex; align-items: center; gap: 6px; }
+    .question-item { background: white; padding: 12px 15px; border-radius: 6px; margin-bottom: 10px; border-left: 4px solid #17a2b8; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; font-size: 13px; }
+    .option-tag { background: #f1f3f5; padding: 8px 12px; border-radius: 4px; border: 1px solid #e9ecef; }
+    .option-tag.correct { background: #d4edda; color: #155724; font-weight: bold; border-color: #c3e6cb; }
+
+    /* QR Код харуулах Modal загвар */
+    .modal-backdrop { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; z-index: 1000; }
+    .modal-content { background: white; padding: 30px; border-radius: 12px; text-align: center; max-width: 400px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+    #qrcodeContainer { display: flex; justify-content: center; margin: 20px 0; }
+  </style>
+</head>
+<body>
+
+  <button type="button" class="back-btn" onclick="window.location.href='teacher.html'">← Багшийн нүүр рүү буцах</button>
+
+  <div class="card">
+    <h2 id="formTitle">2. Шинэ асуултын багц үүсгэх</h2>
+    <input type="text" id="quizTitle" placeholder="Багцын нэр (Жишээ нь: Физик - 1-р улирал)">
+    <textarea id="quizQuestions" rows="6" placeholder="Формат: Асуулт|A|B|C|D|ЗөвХариулт&#10;Жишээ: Монгол улсын нийслэл юу вэ?|Дархан|Улаанбаатар|Эрдэнэт|Ховд|B"></textarea>
+    
+    <button type="button" id="saveBtn" onclick="saveQuestions()">Асуулт хадгалах</button>
+    <button type="button" id="cancelBtn" class="btn-cancel" onclick="resetForm()">Цуцлах</button>
+
+    <div class="excel-tools">
+      <span style="font-weight: bold; font-size: 14px;">Excel хэрэгсэл:</span>
+      <button type="button" class="btn-success" onclick="downloadExcelTemplate()">📥 Загвар Excel татах</button>
+      <input type="file" id="excelFileInput" accept=".xlsx, .xls" style="display:none" onchange="handleExcelUpload(event)">
+      <button type="button" class="btn-info" onclick="document.getElementById('excelFileInput').click()">📤 Excel-ээс уншуулах</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Үүсгэсэн асуултын багцууд</h2>
+    <div id="quizzesListArea">Асуулт ачаалж байна...</div>
+  </div>
+
+  <!-- QR Код Поп-ап Цонх -->
+  <div class="modal-backdrop" id="qrModal">
+    <div class="modal-content">
+      <h2 style="margin-top:0; color:#007bff;">📱 QR код уншуулах</h2>
+      <p style="color:#666; font-size:14px;">Сурагчид гар утасныхаа камераар энэхүү QR кодыг уншуулж шалгалтад хамрагдана уу.</p>
+      <div id="qrcodeContainer"></div>
+      <button type="button" class="btn-delete" style="width:100%; margin-top:15px;" onclick="closeQrModal()">Хаах</button>
+    </div>
+  </div>
+
+  <script>
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (!user || user.role !== 'TEACHER') {
+      window.location.href = 'index.html';
+    }
+
+    let editingQuizId = null;
+    let allQuizzes = [];
+    let qrcodeObj = null;
+
+    async function loadQuizzes() {
+      const area = document.getElementById('quizzesListArea');
+      try {
+        const res = await fetch(`/api/teacher/questions/${user.id}?t=${Date.now()}`);
+        if (!res.ok) throw new Error("Асуулт ачаалахад алдаа гарлаа.");
+
+        allQuizzes = await res.json();
+
+        if (!Array.isArray(allQuizzes) || allQuizzes.length === 0) {
+          area.innerHTML = '<p style="color: #666;">Одоогоор үүсгэсэн асуултын багц байхгүй байна.</p>';
+          return;
+        }
+
+        let html = '';
+        allQuizzes.forEach((quiz, index) => {
+          const items = quiz.items || [];
+          html += `
+            <div class="quiz-box">
+              <div class="quiz-header">
+                <div>
+                  <h3 style="margin: 0; color: #007bff;">${index + 1}. ${quiz.title || 'Нэргүй багц'}</h3>
+                  <small style="color: #666;">Нийт асуулт: ${items.length}</small>
+                </div>
+                <div class="action-btns">
+                  <button type="button" class="btn-play" onclick="showQrCode('${quiz.id}')">▶ Шалгалт эхлүүлэх (QR)</button>
+                  <button type="button" class="btn-edit" onclick="editQuiz('${quiz.id}')">Засах</button>
+                  <button type="button" class="btn-delete" onclick="deleteQuiz('${quiz.id}')">Устгах</button>
+                </div>
+              </div>
+          `;
+
+          items.forEach((item, qIdx) => {
+            const opts = item.options || {};
+            const correct = (item.correct || '').toUpperCase();
+            html += `
+              <div class="question-item">
+                <strong>Асуулт ${qIdx + 1}:</strong> ${item.question || ''}
+                <div class="options-grid">
+                  <div class="option-tag ${correct === 'A' ? 'correct' : ''}">A: ${opts.A || ''}</div>
+                  <div class="option-tag ${correct === 'B' ? 'correct' : ''}">B: ${opts.B || ''}</div>
+                  <div class="option-tag ${correct === 'C' ? 'correct' : ''}">C: ${opts.C || ''}</div>
+                  <div class="option-tag ${correct === 'D' ? 'correct' : ''}">D: ${opts.D || ''}</div>
+                </div>
+              </div>
+            `;
+          });
+          html += `</div>`;
+        });
+
+        area.innerHTML = html;
+      } catch (err) {
+        area.innerHTML = `<p style="color: red;">Алдаа: ${err.message}</p>`;
+      }
+    }
+
+    // QR код үүсгэж Modal цонхоор харуулах
+    function showQrCode(quizId) {
+      const modal = document.getElementById('qrModal');
+      const container = document.getElementById('qrcodeContainer');
+      container.innerHTML = '';
+
+      // QR кодонд орох URL холбоос (Сурагчийн уншуулах хуудас)
+      const studentUrl = `${window.location.origin}/student-entry.html?quizId=${quizId}&teacherId=${user.id}`;
+
+      qrcodeObj = new QRCode(container, {
+        text: studentUrl,
+        width: 200,
+        height: 200,
+        colorDark: "#007bff",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.H
+      });
+
+      modal.style.display = 'flex';
+    }
+
+    function closeQrModal() {
+      document.getElementById('qrModal').style.display = 'none';
+    }
+
+    async function saveQuestions() {
+      try {
+        const title = document.getElementById('quizTitle').value.trim();
+        const rawText = document.getElementById('quizQuestions').value.trim();
+
+        if (!title || !rawText) return alert('Мэдээллийг бүрэн оруулна уу!');
+
+        const lines = rawText.split('\n').filter(line => line.trim() !== '');
+        const items = lines.map(line => {
+          const parts = line.split('|');
+          if (parts.length < 6) return null;
+          const [q, a, b, c, d, correct] = parts;
+          return { question: q.trim(), options: { A: a.trim(), B: b.trim(), C: c.trim(), D: d.trim() }, correct: correct ? correct.trim().toUpperCase() : 'A' };
+        }).filter(item => item !== null);
+
+        if (items.length === 0) return alert('Асуултын форматыг зөв оруулна уу!');
+
+        let res;
+        if (editingQuizId) {
+          res = await fetch(`/api/teacher/questions/${editingQuizId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, items })
+          });
+        } else {
+          res = await fetch('/api/teacher/questions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ teacherId: user.id, title, items })
+          });
+        }
+
+        if (res.ok) {
+          alert('Амжилттай хадгалагдлаа.');
+          resetForm();
+          loadQuizzes();
+        }
+      } catch (err) {
+        alert("Хадгалах үед алдаа гарлаа: " + err.message);
+      }
+    }
+
+    function editQuiz(quizId) {
+      const quiz = allQuizzes.find(q => q.id === quizId);
+      if (!quiz) return;
+      editingQuizId = quizId;
+      document.getElementById('formTitle').innerText = '2. Асуултын багц засах';
+      document.getElementById('quizTitle').value = quiz.title || '';
+      document.getElementById('quizQuestions').value = (quiz.items || []).map(i => `${i.question}|${i.options?.A || ''}|${i.options?.B || ''}|${i.options?.C || ''}|${i.options?.D || ''}|${i.correct || 'A'}`).join('\n');
+      document.getElementById('saveBtn').innerText = 'Шинэчлэн хадгалах';
+      document.getElementById('cancelBtn').style.display = 'block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    async function deleteQuiz(quizId) {
+      if (!confirm('Устгах уу?')) return;
+      const res = await fetch(`/api/teacher/questions/${quizId}`, { method: 'DELETE' });
+      if (res.ok) loadQuizzes();
+    }
+
+    function downloadExcelTemplate() {
+      const data = [["Асуулт", "Сонголт A", "Сонголт B", "Сонголт C", "Сонголт D", "Зөв хариулт"], ["Монгол улсын нийслэл?", "Дархан", "Улаанбаатар", "Эрдэнэт", "Ховд", "B"]];
+      const ws = XLSX.utils.aoa_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Асуултууд");
+      XLSX.writeFile(wb, "асуултын_загвар.xlsx");
+    }
+
+    function handleExcelUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const data = new Uint8Array(e.target.result);
+        const wb = XLSX.read(data, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json(ws, { header: 1 });
+        let lines = [];
+        for (let i = 1; i < json.length; i++) {
+          const row = json[i];
+          if (row && row.length >= 6) lines.push(`${row[0] || ''}|${row[1] || ''}|${row[2] || ''}|${row[3] || ''}|${row[4] || ''}|${String(row[5] || 'A').trim().toUpperCase()}`);
+        }
+        if (lines.length) document.getElementById('quizQuestions').value = lines.join('\n');
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function resetForm() {
+      editingQuizId = null;
+      document.getElementById('formTitle').innerText = '2. Шинэ асуултын багц үүсгэх';
+      document.getElementById('quizTitle').value = '';
+      document.getElementById('quizQuestions').value = '';
+      document.getElementById('saveBtn').innerText = 'Асуулт хадгалах';
+      document.getElementById('cancelBtn').style.display = 'none';
+    }
+
+    loadQuizzes();
+  </script>
+</body>
+</html>

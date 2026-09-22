@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+  <meta charset="UTF-8">
+  <title>ArUco Шалгалт Авах</title>
+  <!-- js-aruco санг CDN-ээр татах -->
+  <script src="https://cdn.jsdelivr.net/gh/jscid/js-aruco@master/src/cv.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/jscid/js-aruco@master/src/aruco.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #222; color: white; display: flex; height: 100vh; }
+    .left-panel { flex: 1; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; }
+    .right-panel { width: 450px; background: #333; padding: 20px; box-sizing: border-box; overflow-y: auto; }
+    video { width: 100%; border-radius: 8px; background: #000; }
+    canvas { display: none; }
+    .q-box { background: #444; padding: 15px; border-radius: 6px; margin-bottom: 15px; }
+    .student-row { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #555; }
+    .ans-badge { padding: 3px 8px; border-radius: 4px; font-weight: bold; background: #666; }
+    .ans-A { background: #ffc107; color: black; }
+    .ans-B { background: #0d6efd; }
+    .ans-C { background: #198754; }
+    .ans-D { background: #dc3545; }
+    button { padding: 10px 15px; font-size: 16px; border: none; border-radius: 4px; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+  <div class="left-panel">
+    <div>
+      <h2 id="qTitle">Асуулт ачаалж байна...</h2>
+      <div id="qOptions" class="q-box"></div>
+    </div>
+
+    <div>
+      <video id="webcam" autoplay playsinline></video>
+      <canvas id="canvas"></canvas>
+    </div>
+
+    <div style="display: flex; gap: 10px;">
+      <button style="background: #0d6efd;" onclick="nextQuestion()">Дараагийн Асуулт</button>
+      <button style="background: #198754;" onclick="finishExam()">Шалгалт Дуусгах & Дүн Хадгалах</button>
+    </div>
+  </div>
+
+  <div class="right-panel">
+    <h3>Сурагчдын Хариулт</h3>
+    <div id="studentsList"></div>
+  </div>
+
+  <script>
+    const user = JSON.parse(localStorage.getItem('user'));
+    const urlParams = new URLSearchParams(window.location.search);
+    const classId = urlParams.get('classId');
+    const quizId = urlParams.get('quizId');
+
+    let currentClass = null;
+    let currentQuiz = null;
+    let qIndex = 0;
+    let liveAnswers = {}; // { studentMarkerId: 'A' }
+    let allExamRecords = [];
+
+    let detector, video, canvas, context;
+
+    async function init() {
+      // 1. Анги болон Асуултын мэдээллийг татах
+      const resC = await fetch(`/api/teacher/classes/${user.id}`);
+      const classes = await resC.json();
+      currentClass = classes.find(c => c.id === classId);
+
+      const resQ = await fetch(`/api/teacher/questions/${user.id}`);
+      const quizzes = await resQ.json();
+      currentQuiz = quizzes.find(q => q.id === quizId);
+
+      // 2. Камер тохируулах ба ArUco танигч бэлдэх
+      detector = new AR.Detector();
+      video = document.getElementById('webcam');
+      canvas = document.getElementById('canvas');
+      context = canvas.getContext('2d');
+
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 } });
+      video.srcObject = stream;
+
+      renderQuestion();
+      requestAnimationFrame(tick);
+    }
+
+    function renderQuestion() {
+      liveAnswers = {};
+      const q = currentQuiz.items[qIndex];
+      document.getElementById('qTitle').innerText = `Асуулт ${qIndex + 1}: ${q.question}`;
+      document.getElementById('qOptions').innerHTML = `
+        <p>A: ${q.options.A}</p>
+        <p>B: ${q.options.B}</p>
+        <p>C: ${q.options.C}</p>
+        <p>D: ${q.options.D}</p>
+      `;
+      renderStudents();
+    }
+
+    function renderStudents() {
+      const container = document.getElementById('studentsList');
+      container.innerHTML = currentClass.students.map(s => {
+        const ans = liveAnswers[s.markerId] || '-';
+        return `
+          <div class="student-row">
+            <span>Маркер #${s.markerId}: <strong>${s.name}</strong></span>
+            <span class="ans-badge ans-${ans}">${ans}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Веб камерын кадр бүрийг уншиж ArUco-г таних
+    function tick() {
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+        const markers = detector.detect(imageData);
+
+        markers.forEach(marker => {
+          // ArUco-ийн 0,1-р буланг ашиглан эргэлтийн өнцгийг бодох
+          const p0 = marker.corners[0];
+          const p1 = marker.corners[1];
+          const angle = Math.atan2(p1.y - p0.y, p1.x - p0.x) * (180 / Math.PI);
+
+          let answer = 'A';
+          if (angle >= -45 && angle < 45) answer = 'A';
+          else if (angle >= 45 && angle < 135) answer = 'B';
+          else if (angle >= 135 || angle < -135) answer = 'C';
+          else if (angle >= -135 && angle < -45) answer = 'D';
+
+          liveAnswers[marker.id] = answer;
+        });
+
+        if (markers.length > 0) renderStudents();
+      }
+      requestAnimationFrame(tick);
+    }
+
+    function nextQuestion() {
+      // Одоогийн асуултын хариултуудыг хадгалах
+      const q = currentQuiz.items[qIndex];
+      currentClass.students.forEach(s => {
+        const ans = liveAnswers[s.markerId] || 'Хоосон';
+        allExamRecords.push({
+          studentName: s.name,
+          question: q.question,
+          answer: ans,
+          isCorrect: ans === q.correct
+        });
+      });
+
+      if (qIndex + 1 < currentQuiz.items.length) {
+        qIndex++;
+        renderQuestion();
+      } else {
+        alert('Шалгалтын бүх асуулт дууслаа!');
+      }
+    }
+
+    async function finishExam() {
+      await fetch('/api/teacher/results', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          teacherId: user.id,
+          classId: currentClass.id,
+          className: currentClass.className,
+          quizTitle: currentQuiz.title,
+          records: allExamRecords
+        })
+      });
+      alert('Шалгалтын анализ амжилттай хадгалагдлаа!');
+      window.location.href = 'teacher.html';
+    }
+
+    window.onload = init;
+  </script>
+</body>
+</html>

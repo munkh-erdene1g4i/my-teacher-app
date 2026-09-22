@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+  <meta charset="UTF-8">
+  <title>Админ Панел</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+    .box { border: 1px solid #ddd; padding: 15px; border-radius: 5px; margin-bottom: 20px; background: #fff; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background: #f2f2f2; }
+    button { padding: 8px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>Админы Хэсэг</h1>
+  <button onclick="logout()" style="background: #dc3545;">Холболт салгах</button>
+  
+  <div class="box">
+    <h3>Шинэ багш бүртгэх</h3>
+    <input type="text" id="t_user" placeholder="Багшийн нэвтрэх нэр">
+    <input type="password" id="t_pass" placeholder="Нууц үг">
+    <button onclick="addTeacher()">Бүртгэх</button>
+  </div>
+
+  <div class="box">
+    <h3>Багш нарын жагсаалт</h3>
+    <table id="teacherTable">
+      <thead><tr><th>ID</th><th>Нэвтрэх нэр</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script>
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (!user || user.role !== 'ADMIN') window.location.href = 'index.html';
+
+    async function loadTeachers() {
+      const res = await fetch('/api/admin/teachers');
+      const data = await res.json();
+      const tbody = document.querySelector('#teacherTable tbody');
+      tbody.innerHTML = data.map(t => `<tr><td>${t.id}</td><td>${t.username}</td></tr>`).join('');
+    }
+
+    async function addTeacher() {
+      const username = document.getElementById('t_user').value;
+      const password = document.getElementById('t_pass').value;
+
+      const res = await fetch('/api/admin/teachers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      alert(data.message);
+      if (data.success) {
+        document.getElementById('t_user').value = '';
+        document.getElementById('t_pass').value = '';
+        loadTeachers();
+      }
+    }
+
+    function logout() { localStorage.clear(); window.location.href = 'index.html'; }
+    loadTeachers();
+  </script>
+</body>
+</html>

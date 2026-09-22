@@ -1,0 +1,20 @@
+{
+  "name": "quiz-teacher-system",
+  "version": "1.0.0",
+  "description": "Багшийн хянах дэлгэц болон шалгалтын систем",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [
+    "express",
+    "quiz",
+    "teacher"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

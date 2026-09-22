@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+  <meta charset="UTF-8">
+  <title>Plickers - ArUco Карт Хэвлэх</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #f4f4f9;
+      color: #333;
+    }
+    
+    /* Хэвлэхэд нуугдах тохиргооны хэсэг */
+    .no-print {
+      background: white;
+      padding: 15px 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-top: 10px;
+    }
+    input[type="number"] {
+      width: 80px;
+      padding: 8px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      padding: 9px 16px;
+      font-size: 15px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:hover { opacity: 0.9; }
+
+    /* Картнуудын байршил (Дэлгэц дээр) */
+    .markers-container {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+    }
+
+    /* Нэг картны үндсэн дизайн */
+    .card {
+      background: white;
+      border: 2px dashed #bbb;
+      border-radius: 10px;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      page-break-inside: avoid;
+    }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    .marker-box {
+      position: relative;
+      width: 230px;
+      height: 230px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    canvas {
+      width: 170px;
+      height: 170px;
+    }
+
+    /* A, B, C, D үсгийн байрлал ба ТОД ӨНГӨНҮҮД */
+    .label {
+      position: absolute;
+      font-size: 26px;
+      font-weight: 900;
+      text-shadow: 0px 0px 2px rgba(255,255,255,0.8);
+    }
+    .label-A {
+      top: 0px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #d97706; /* Улбар шар / Шар */
+    }
+    .label-B {
+      right: 2px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #2563eb; /* Цэнхэр */
+    }
+    .label-C {
+      bottom: 0px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #16a34a; /* Ногоон */
+    }
+    .label-D {
+      left: 2px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #dc2626; /* Улаан */
+    }
+
+    /* 🖨️ ПРИНТЕРЭЭР ХЭВЛЭХ ҮЕИЙН ТОХИРГОО (1 НҮҮРЭНД 4 КАРТ) */
+    @media print {
+      @page {
+        size: A4 portrait;
+        margin: 10mm;
+      }
+      .no-print { display: none !important; }
+      body {
+        background: white;
+        margin: 0;
+        padding: 0;
+      }
+      .markers-container {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows: repeat(2, 130mm); /* Нэг нүүрэнд яг 2 мөр байхаар тохируулав */
+        gap: 10mm;
+      }
+      .card {
+        border: 1px dashed #888;
+        border-radius: 6px;
+        height: 130mm;
+        padding: 10px;
+        page-break-inside: avoid;
+      }
+      /* 4 карт тутамд дараагийн A4 хуудас руу шилжинэ */
+      .card:nth-child(4n) {
+        page-break-after: always;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="no-print">
+    <h2>🖨️ ArUco Маркер Карт Хэвлэх (1 нүүрэнд 4 карт)</h2>
+    <p>Сурагчдын тоог оруулан "Карт үүсгэх" товчийг дарна уу.</p>
+    <div class="controls">
+      <label for="markerCount">Сурагчдын тоо:</label>
+      <input type="number" id="markerCount" value="8" min="1" max="100">
+      <button onclick="generateMarkers()">Карт Үүсгэх</button>
+      <button onclick="window.print()" style="background: #28a745;">🖨️ Хэвлэх (Print)</button>
+      <button onclick="window.location.href='teacher.html'" style="background: #6c757d;">← Буцах</button>
+    </div>
+  </div>
+
+  <div id="container" class="markers-container"></div>
+
+  <script>
+    // js-aruco сантай шууд таарах кодын матриц
+    const ARUCO_IDS = [
+      [1, 0, 0, 0, 0],
+      [1, 0, 1, 1, 1],
+      [0, 1, 0, 0, 1],
+      [0, 1, 1, 1, 0]
+    ];
+
+    // Canvas дээр ArUco кодыг зурах функц
+    function drawArucoMarker(canvas, id) {
+      const ctx = canvas.getContext('2d');
+      const gridSize = 7;
+      const cellSize = canvas.width / gridSize;
+
+      ctx.fillStyle = 'black';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const bits = [
+        (id >> 8) & 3,
+        (id >> 6) & 3,
+        (id >> 4) & 3,
+        (id >> 2) & 3,
+        id & 3
+      ];
+
+      for (let row = 0; row < 5; row++) {
+        const rowBits = ARUCO_IDS[bits[row]];
+        for (let col = 0; col < 5; col++) {
+          ctx.fillStyle = rowBits[col] === 1 ? 'white' : 'black';
+          ctx.fillRect((col + 1) * cellSize, (row + 1) * cellSize, cellSize, cellSize);
+        }
+      }
+    }
+
+    function generateMarkers() {
+      const count = parseInt(document.getElementById('markerCount').value) || 8;
+      const container = document.getElementById('container');
+      container.innerHTML = '';
+
+      for (let id = 1; id <= count; id++) {
+        const card = document.createElement('div');
+        card.className = 'card';
+
+        card.innerHTML = `
+          <div class="card-title">Сурагч / Маркер #${id}</div>
+          <div class="marker-box">
+            <span class="label label-A">A</span>
+            <span class="label label-B">B</span>
+            <span class="label label-C">C</span>
+            <span class="label label-D">D</span>
+            <canvas id="marker-${id}" width="200" height="200"></canvas>
+          </div>
+        `;
+
+        container.appendChild(card);
+        drawArucoMarker(document.getElementById(`marker-${id}`), id);
+      }
+    }
+
+    window.onload = generateMarkers;
+  </script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+  <meta charset="UTF-8">
+  <title>Шалгалтын Дүн & Анализ</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; background: #f4f6f9; }
+    .card { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    button { padding: 10px; border-radius: 5px; border: none; font-weight: bold; cursor: pointer; }
+    .back-btn { background: #6c757d; color: white; margin-bottom: 15px; }
+  </style>
+</head>
+<body>
+  <button class="back-btn" onclick="window.location.href='teacher.html'">← Багшийн нүүр рүү буцах</button>
+
+  <div class="card">
+    <h2>4. Шалгалтын Анализ / Түүх</h2>
+    <div id="resultsArea">Ачаалж байна...</div>
+  </div>
+
+  <script>
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (!user || user.role !== 'TEACHER') window.location.href = 'index.html';
+
+    async function loadResults() {
+      const res = await fetch(`/api/teacher/results/${user.id}`);
+      const data = await res.json();
+      const area = document.getElementById('resultsArea');
+      
+      if(data.length === 0) {
+        area.innerHTML = '<p style="color: #666;">Одоогоор хадгалагдсан шалгалтын дүн байхгүй байна.</p>';
+        return;
+      }
+
+      area.innerHTML = data.map(r => `
+        <div style="border-bottom: 1px solid #eee; padding: 12px 0;">
+          <strong>Огноо:</strong> ${r.date} | <strong>Анги:</strong> ${r.className} | <strong>Шалгалт:</strong> ${r.quizTitle}
+          <ul style="margin: 8px 0 0 20px;">
+            ${r.records.map(rec => `<li>${rec.studentName}: Хариулсан: <strong>${rec.answer}</strong> (${rec.isCorrect ? '<span style="color:green;">Зөв</span>' : '<span style="color:red;">Буруу</span>'})</li>`).join('')}
+          </ul>
+        </div>
+      `).join('');
+    }
+
+    loadResults();
+  </script>
+</body>
+</html>

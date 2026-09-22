@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+  <meta charset="UTF-8">
+  <title>Анги & Сурагчид Удирдах</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      padding: 20px;
+      max-width: 800px;
+      margin: 0 auto;
+      background: #f4f6f9;
+      color: #333;
+    }
+    .card {
+      background: white;
+      padding: 25px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 25px;
+    }
+    input, textarea, button {
+      width: 100%;
+      margin: 8px 0;
+      padding: 10px;
+      box-sizing: border-box;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:hover { opacity: 0.9; }
+    .back-btn {
+      background: #6c757d;
+      margin-bottom: 15px;
+      width: auto;
+    }
+    
+    /* Ангиудын жагсаалтын хүснэгтийн загвар */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 10px;
+      text-align: left;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+    .btn-edit {
+      background: #ffc107;
+      color: #333;
+      width: auto;
+      padding: 6px 12px;
+      margin-right: 5px;
+    }
+    .btn-delete {
+      background: #dc3545;
+      color: white;
+      width: auto;
+      padding: 6px 12px;
+    }
+    .btn-cancel {
+      background: #6c757d;
+      color: white;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <button class="back-btn" onclick="window.location.href='teacher.html'">← Багшийн нүүр рүү буцах</button>
+  
+  <!-- Анги үүсгэх болон засах маягт -->
+  <div class="card">
+    <h2 id="formTitle">1. Шинэ анги үүсгэх</h2>
+    <input type="text" id="className" placeholder="Ангийн нэр (жишээ нь: 10A)">
+    <textarea id="studentsList" rows="4" placeholder="Сурагчдыг таслалаар тусгаарлан бичнэ үү.&#10;Жишээ: Болд, Сараа, Бат"></textarea>
+    
+    <button id="saveBtn" onclick="saveClass()">Анги хадгалах</button>
+    <button id="cancelBtn" class="btn-cancel" onclick="resetForm()">Цуцлах</button>
+  </div>
+
+  <!-- Үүсгэсэн ангиудын жагсаалт -->
+  <div class="card">
+    <h2>Үүсгэсэн ангиудын жагсаалт</h2>
+    <div id="classesListArea">Ачаалж байна...</div>
+  </div>
+
+  <script>
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (!user || user.role !== 'TEACHER') window.location.href = 'index.html';
+
+    let editingClassId = null; // Засаж байгаа ангийн ID-г хадгалах хувьсагч
+    let allClasses = [];
+
+    // Ангиудын жагсаалтыг серверээс татаж харуулах
+    async function loadClasses() {
+      const res = await fetch(`/api/teacher/classes/${user.id}`);
+      allClasses = await res.json();
+      const area = document.getElementById('classesListArea');
+
+      if (allClasses.length === 0) {
+        area.innerHTML = '<p style="color: #666;">Одоогоор үүсгэсэн анги байхгүй байна.</p>';
+        return;
+      }
+
+      let html = `
+        <table>
+          <thead>
+            <tr>
+              <th>Ангийн нэр</th>
+              <th>Сурагчдын тоо</th>
+              <th>Сурагчид</th>
+              <th>Үйлдэл</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      allClasses.forEach(c => {
+        const studentNames = c.students.map(s => s.name).join(', ');
+        html += `
+          <tr>
+            <td><strong>${c.className}</strong></td>
+            <td>${c.students.length}</td>
+            <td><small>${studentNames}</small></td>
+            <td>
+              <button class="btn-edit" onclick="editClass('${c.id}')">Засах</button>
+              <button class="btn-delete" onclick="deleteClass('${c.id}')">Устгах</button>
+            </td>
+          </tr>
+        `;
+      });
+
+      html += '</tbody></table>';
+      area.innerHTML = html;
+    }
+
+    // Анги хадгалах / Шинэчлэн засах функц
+    async function saveClass() {
+      const className = document.getElementById('className').value.trim();
+      const rawStudents = document.getElementById('studentsList').value.split(',');
+      const students = rawStudents.map((s, index) => ({ markerId: index + 1, name: s.trim() })).filter(s => s.name);
+
+      if(!className || students.length === 0) {
+        return alert('Ангийн нэр болон сурагчдыг оруулна уу!');
+      }
+
+      if (editingClassId) {
+        // Шинэчлэн засах (PUT)
+        await fetch(`/api/teacher/classes/${editingClassId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ className, students })
+        });
+        alert('Анги амжилттай шинэчлэгдлээ.');
+      } else {
+        // Шинээр үүсгэх (POST)
+        await fetch('/api/teacher/classes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ teacherId: user.id, className, students })
+        });
+        alert('Шинэ анги хадгалагдлаа.');
+      }
+
+      resetForm();
+      loadClasses();
+    }
+
+    // Засах горим руу шилжүүлэх
+    function editClass(classId) {
+      const cls = allClasses.find(c => c.id === classId);
+      if (!cls) return;
+
+      editingClassId = classId;
+      document.getElementById('formTitle').innerText = '1. Ангийн мэдээлэл засах';
+      document.getElementById('className').value = cls.className;
+      document.getElementById('studentsList').value = cls.students.map(s => s.name).join(', ');
+      
+      document.getElementById('saveBtn').innerText = 'Шинэчлэн хадгалах';
+      document.getElementById('cancelBtn').style.display = 'block';
+      
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Анги устгах
+    async function deleteClass(classId) {
+      if (!confirm('Энэ ангийг устгахдаа итгэлтэй байна уу?')) return;
+
+      await fetch(`/api/teacher/classes/${classId}`, {
+        method: 'DELETE'
+      });
+
+      alert('Анги устгагдлаа.');
+      loadClasses();
+    }
+
+    // Маягтыг анхны төлөвт нь оруулж цэвэрлэх
+    function resetForm() {
+      editingClassId = null;
+      document.getElementById('formTitle').innerText = '1. Шинэ анги үүсгэх';
+      document.getElementById('className').value = '';
+      document.getElementById('studentsList').value = '';
+      document.getElementById('saveBtn').innerText = 'Анги хадгалах';
+      document.getElementById('cancelBtn').style.display = 'none';
+    }
+
+    // Хуудас ачаалагдахад ангиудыг унших
+    loadClasses();
+  </script>
+</body>
+</html>

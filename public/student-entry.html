@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Сурагчийн нэвтрэх хэсэг</title>
+  <style>
+    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background-color: #f4f6f9; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
+    .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+    h2 { color: #007bff; margin-top: 0; }
+    input { width: 100%; padding: 12px; margin: 15px 0; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; text-align: center; }
+    input:focus { border-color: #007bff; outline: none; }
+    button { width: 100%; padding: 12px; background: #28a745; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
+    button:hover { background: #218838; }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h2>📝 Шалгалтад нэвтрэх</h2>
+    <p style="color: #666; font-size: 14px;">Сурагч та өөрийн Овог, Нэрийг бүтэн бичнэ үү.</p>
+    
+    <form onsubmit="startExam(event)">
+      <input type="text" id="studentName" placeholder="Жишээ: Б. Болд" required>
+      <button type="submit">Шалгалт эхлүүлэх ▶</button>
+    </form>
+  </div>
+
+  <script>
+    function startExam(e) {
+      e.preventDefault();
+      const name = document.getElementById('studentName').value.trim();
+      const urlParams = new URLSearchParams(window.location.search);
+      const quizId = urlParams.get('quizId') || '';
+      const teacherId = urlParams.get('teacherId') || '';
+
+      if (!name) return alert('Нэрээ оруулна уу!');
+
+      // Сурагчийн нэрийг хадгалах
+      localStorage.setItem('studentName', name);
+
+      // Quiz хуудас руу шилжих
+      window.location.href = `quiz.html?quizId=${quizId}&teacherId=${teacherId}`;
+    }
+  </script>
+</body>
+</html>

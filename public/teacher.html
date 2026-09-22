@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+  <meta charset="UTF-8">
+  <title>Багшийн Хянах Дэлгэц</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      padding: 20px;
+      max-width: 1100px;
+      margin: 0 auto;
+      background: #f4f6f9;
+      color: #333;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 25px;
+    }
+    
+    /* 6 карттай торлог бүтэц (Grid Layout) */
+    .menu-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 20px;
+    }
+
+    .menu-card {
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      text-align: center;
+      border: 2px solid transparent;
+    }
+
+    .menu-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+      border-color: #007bff;
+    }
+
+    /* Зургийн 1:1 (500x500) харьцаа тохиргоо */
+    .menu-card img {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      object-fit: cover;
+      display: block;
+    }
+
+    .menu-card-title {
+      padding: 12px 8px;
+      font-weight: bold;
+      font-size: 15px;
+      color: #2c3e50;
+    }
+
+    button {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>Багшийн Хянах Дэлгэц</h1>
+    <div>
+      <button onclick="logout()" style="background:#dc3545; color: white;">Системээс гарах</button>
+    </div>
+  </div>
+
+  <!-- 🖼️ ЗУРАГТАЙ ЦЭСНИЙ ХЭСЭГ (6 КАРТ) -->
+  <div class="menu-grid">
+    
+    <!-- Цэс 1 -->
+    <div class="menu-card" onclick="window.location.href='classes.html'">
+      <img src="/images/zurag1.jpg" alt="Анги & Сурагчид">
+      <div class="menu-card-title">1. Анги & Сурагчид</div>
+    </div>
+
+    <!-- Цэс 2 -->
+    <div class="menu-card" onclick="window.location.href='quizzes.html'">
+      <img src="/images/zurag2.jpg" alt="Асуултын багц">
+      <div class="menu-card-title">2. Асуултын багц</div>
+    </div>
+
+    <!-- Цэс 3 -->
+    <div class="menu-card" onclick="window.location.href='exam-launch.html'">
+      <img src="/images/zurag3.jpg" alt="Шалгалт эхлүүлэх">
+      <div class="menu-card-title">3. Шалгалт эхлүүлэх</div>
+    </div>
+
+    <!-- Цэс 4 -->
+    <div class="menu-card" onclick="window.location.href='results.html'">
+      <img src="/images/zurag4.jpg" alt="Дүн ба Анализ">
+      <div class="menu-card-title">4. Дүн ба Анализ</div>
+    </div>
+
+    <!-- Цэс 5 (Шинээр нэмэгдсэн Карт Хэвлэх цэс) -->
+    <div class="menu-card" onclick="window.location.href='generate-markers.html'">
+      <img src="/images/zurag6.jpg" alt="Маркер карт хэвлэх">
+      <div class="menu-card-title">5. Маркер карт хэвлэх</div>
+    </div>
+
+    <!-- Цэс 6 -->
+    <div class="menu-card" onclick="window.location.href='help.html'">
+      <img src="/images/zurag5.jpg" alt="Тусламж хичээл">
+      <div class="menu-card-title">6. Тусламж хичээл</div>
+    </div>
+
+  </div>
+
+  <script>
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (!user || user.role !== 'TEACHER') window.location.href = 'index.html';
+
+    function logout() {
+      localStorage.clear();
+      window.location.href = 'index.html';
+    }
+  </script>
+</body>
+</html>

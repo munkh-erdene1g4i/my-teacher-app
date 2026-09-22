@@ -1,0 +1,260 @@
+{
+  "users": [
+    {
+      "id": "admin1",
+      "username": "admin",
+      "password": "123",
+      "role": "ADMIN"
+    },
+    {
+      "id": "t_1790057978939",
+      "username": "teacher",
+      "password": "123",
+      "role": "TEACHER"
+    }
+  ],
+  "classes": [
+    {
+      "id": "c_1790058093611",
+      "teacherId": "t_1790057978939",
+      "className": "test",
+      "students": [
+        {
+          "markerId": 1,
+          "name": "bataa"
+        },
+        {
+          "markerId": 2,
+          "name": "naraa"
+        },
+        {
+          "markerId": 3,
+          "name": "saraa"
+        }
+      ]
+    },
+    {
+      "id": "c_1790062066275",
+      "teacherId": "t_1790057978939",
+      "className": "10Б",
+      "students": [
+        {
+          "markerId": 1,
+          "name": "Соёлоо"
+        },
+        {
+          "markerId": 2,
+          "name": "Тэнүүн"
+        }
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "id": "q_1790058132873",
+      "teacherId": "t_1790057978939",
+      "title": "test-1",
+      "items": [
+        {
+          "question": "hi ",
+          "options": {
+            "A": " a ",
+            "B": " b ",
+            "C": " c ",
+            "D": " d "
+          },
+          "correct": "A"
+        }
+      ]
+    },
+    {
+      "id": "q_1790062489889",
+      "teacherId": "t_1790057978939",
+      "title": "soyloo",
+      "items": [
+        {
+          "question": "Монгол улсын нийслэл ямар хот вэ?",
+          "options": {
+            "A": "Дархан",
+            "B": "Улаанбаатар",
+            "C": "Эрдэнэт",
+            "D": "Ховд"
+          },
+          "correct": "B"
+        },
+        {
+          "question": "Нэг жилд хэдэн сар байдаг вэ?",
+          "options": {
+            "A": "10",
+            "B": "11",
+            "C": "12",
+            "D": "24"
+          },
+          "correct": "C"
+        },
+        {
+          "question": "Гоо хэнд сайн бэ?",
+          "options": {
+            "A": "Лүндээ",
+            "B": "Тэргэл",
+            "C": "Тэнүүн",
+            "D": "Өлзий"
+          },
+          "correct": "A"
+        }
+      ]
+    }
+  ],
+  "results": [
+    {
+      "id": "r_1790058315921",
+      "teacherId": "t_1790057978939",
+      "classId": "c_1790058093611",
+      "className": "test",
+      "quizTitle": "test-1",
+      "date": "2026.09.22",
+      "records": []
+    },
+    {
+      "id": "r_1790061634745",
+      "teacherId": "t_1790057978939",
+      "classId": "c_1790058093611",
+      "className": "test",
+      "quizTitle": "test-1",
+      "date": "2026.09.22",
+      "records": []
+    },
+    {
+      "id": "r_1790063582473",
+      "teacherId": "t_1790057978939",
+      "classId": "c_1790058093611",
+      "className": "test",
+      "quizTitle": "test-1",
+      "date": "2026.09.22",
+      "records": [
+        {
+          "studentName": "bataa",
+          "question": "hi ",
+          "answer": "Хоосон",
+          "isCorrect": false
+        },
+        {
+          "studentName": "naraa",
+          "question": "hi ",
+          "answer": "Хоосон",
+          "isCorrect": false
+        },
+        {
+          "studentName": "saraa",
+          "question": "hi ",
+          "answer": "Хоосон",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "id": "r_1790063762681",
+      "teacherId": "t_1790057978939",
+      "classId": "c_1790062066275",
+      "className": "10Б",
+      "quizTitle": "soyloo",
+      "date": "2026.09.22",
+      "records": []
+    },
+    {
+      "id": "r_1790063795945",
+      "teacherId": "t_1790057978939",
+      "classId": "c_1790062066275",
+      "className": "10Б",
+      "quizTitle": "soyloo",
+      "date": "2026.09.22",
+      "records": []
+    },
+    {
+      "id": "r_1790063816464",
+      "teacherId": "t_1790057978939",
+      "classId": "c_1790062066275",
+      "className": "10Б",
+      "quizTitle": "soyloo",
+      "date": "2026.09.22",
+      "records": [
+        {
+          "studentName": "Соёлоо",
+          "question": "Монгол улсын нийслэл ямар хот вэ?",
+          "answer": "Хоосон",
+          "isCorrect": false
+        },
+        {
+          "studentName": "Тэнүүн",
+          "question": "Монгол улсын нийслэл ямар хот вэ?",
+          "answer": "Хоосон",
+          "isCorrect": false
+        },
+        {
+          "studentName": "Соёлоо",
+          "question": "Нэг жилд хэдэн сар байдаг вэ?",
+          "answer": "Хоосон",
+          "isCorrect": false
+        },
+        {
+          "studentName": "Тэнүүн",
+          "question": "Нэг жилд хэдэн сар байдаг вэ?",
+          "answer": "Хоосон",
+          "isCorrect": false
+        },
+        {
+          "studentName": "Соёлоо",
+          "question": "Гоо хэнд сайн бэ?",
+          "answer": "Хоосон",
+          "isCorrect": false
+        },
+        {
+          "studentName": "Тэнүүн",
+          "question": "Гоо хэнд сайн бэ?",
+          "answer": "Хоосон",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "id": "r_1790063829818",
+      "teacherId": "t_1790057978939",
+      "classId": "c_1790062066275",
+      "className": "10Б",
+      "quizTitle": "soyloo",
+      "date": "2026.09.22",
+      "records": [
+        {
+          "studentName": "Соёлоо",
+          "question": "Монгол улсын нийслэл ямар хот вэ?",
+          "answer": "Хоосон",
+          "isCorrect": false
+        },
+        {
+          "studentName": "Тэнүүн",
+          "question": "Монгол улсын нийслэл ямар хот вэ?",
+          "answer": "Хоосон",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "id": "r_1790064276713",
+      "teacherId": "t_1790057978939",
+      "classId": "c_1790062066275",
+      "className": "10Б",
+      "quizTitle": "soyloo",
+      "date": "2026.09.22",
+      "records": []
+    },
+    {
+      "id": "r_1790064977273",
+      "teacherId": "t_1790057978939",
+      "classId": "c_1790058093611",
+      "className": "test",
+      "quizTitle": "test-1",
+      "date": "2026.09.22",
+      "records": []
+    }
+  ]
+}

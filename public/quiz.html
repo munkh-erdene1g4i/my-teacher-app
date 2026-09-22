@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Шалгалт өгөх</title>
+  <style>
+    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background-color: #f4f6f9; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+    .quiz-card { background: #ffffff; width: 100%; max-width: 650px; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
+    .header-info { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eef2f5; padding-bottom: 12px; margin-bottom: 20px; }
+    .student-badge { background: #eef5ff; color: #007bff; padding: 6px 12px; border-radius: 20px; font-size: 14px; font-weight: bold; margin-bottom: 10px; display: inline-block; }
+    .quiz-title { font-size: 18px; font-weight: bold; color: #333; margin: 0; }
+    .progress-text { font-size: 14px; color: #6c757d; font-weight: 600; }
+    .question-title { font-size: 18px; color: #2c3e50; margin-bottom: 20px; line-height: 1.5; }
+    .options-list { display: flex; flex-direction: column; gap: 12px; }
+    .option-item { display: flex; align-items: center; padding: 14px 18px; border: 2px solid #e9ecef; border-radius: 8px; cursor: pointer; transition: all 0.2s; background: #fafafa; }
+    .option-item:hover { border-color: #007bff; background: #f0f7ff; }
+    .option-item.selected { border-color: #007bff; background: #e7f1ff; font-weight: bold; }
+    .option-key { display: inline-block; width: 28px; height: 28px; line-height: 28px; text-align: center; background: #e9ecef; border-radius: 50%; margin-right: 12px; font-weight: bold; color: #495057; }
+    .option-item.selected .option-key { background: #007bff; color: white; }
+    .navigation-btns { display: flex; justify-content: space-between; margin-top: 30px; padding-top: 20px; border-top: 2px solid #eef2f5; }
+    .btn { padding: 10px 24px; border-radius: 6px; border: none; font-size: 15px; font-weight: bold; cursor: pointer; }
+    .btn-secondary { background: #6c757d; color: white; }
+    .btn-secondary:disabled { background: #d6d8db; cursor: not-allowed; }
+    .btn-primary { background: #007bff; color: white; }
+    .btn-success { background: #28a745; color: white; }
+    .loading-state { text-align: center; padding: 40px 0; color: #6c757d; }
+  </style>
+</head>
+<body>
+
+  <div class="quiz-card">
+    <div id="quizApp">
+      <div class="loading-state">
+        <h2>Асуултууд ачаалж байна...</h2>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let quizData = null;
+    let questions = [];
+    let currentIndex = 0;
+    let userAnswers = {};
+    let studentName = localStorage.getItem('studentName') || 'Зочин сурагч';
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const teacherId = urlParams.get('teacherId');
+
+      if (teacherId) {
+        fetchQuizQuestions(teacherId);
+      } else {
+        const user = JSON.parse(localStorage.getItem('user'));
+        if (user && user.id) {
+          fetchQuizQuestions(user.id);
+        } else {
+          showError("Шалгалтын тохиргоо дутуу байна.");
+        }
+      }
+    });
+
+    async function fetchQuizQuestions(teacherId) {
+      try {
+        const response = await fetch(`/api/teacher/questions/${teacherId}?t=${Date.now()}`);
+        if (!response.ok) throw new Error("Асуулт ачаалахад алдаа гарлаа.");
+
+        const data = await response.json();
+
+        if (Array.isArray(data) && data.length > 0) {
+          quizData = data[0];
+          questions = quizData.items || [];
+
+          if (questions.length > 0) {
+            currentIndex = 0;
+            renderQuizInterface();
+            displayQuestion(currentIndex);
+          } else {
+            showError("Энэ багцад асуулт олдсонгүй.");
+          }
+        } else {
+          showError("Үүсгэсэн асуултын багц олдсонгүй.");
+        }
+      } catch (err) {
+        showError("Сүлжээний алдаа: " + err.message);
+      }
+    }
+
+    function renderQuizInterface() {
+      const app = document.getElementById('quizApp');
+      app.innerHTML = `
+        <div>
+          <span class="student-badge">👤 Сурагч: ${studentName}</span>
+        </div>
+        <div class="header-info">
+          <h1 class="quiz-title">${quizData.title || 'Шалгалт'}</h1>
+          <span class="progress-text" id="progressTracker">1 / ${questions.length}</span>
+        </div>
+
+        <div id="questionContainer"></div>
+
+        <div class="navigation-btns">
+          <button class="btn btn-secondary" id="prevBtn" onclick="goToPreviousQuestion()" disabled>← Өмнөх</button>
+          <button class="btn btn-primary" id="nextBtn" onclick="goToNextQuestion()">Дараагийн →</button>
+        </div>
+      `;
+    }
+
+    function displayQuestion(index) {
+      if (!questions[index]) return;
+
+      const q = questions[index];
+      const opts = q.options || {};
+      const container = document.getElementById('questionContainer');
+      const progressText = document.getElementById('progressTracker');
+      const prevBtn = document.getElementById('prevBtn');
+      const nextBtn = document.getElementById('nextBtn');
+
+      progressText.innerText = `Асуулт ${index + 1} / ${questions.length}`;
+      const selectedOption = userAnswers[index];
+
+      container.innerHTML = `
+        <div class="question-title">
+          <strong>${index + 1}.</strong> ${q.question}
+        </div>
+        <div class="options-list">
+          <div class="option-item ${selectedOption === 'A' ? 'selected' : ''}" onclick="selectAnswer(${index}, 'A')">
+            <span class="option-key">A</span>
+            <span>${opts.A || ''}</span>
+          </div>
+          <div class="option-item ${selectedOption === 'B' ? 'selected' : ''}" onclick="selectAnswer(${index}, 'B')">
+            <span class="option-key">B</span>
+            <span>${opts.B || ''}</span>
+          </div>
+          <div class="option-item ${selectedOption === 'C' ? 'selected' : ''}" onclick="selectAnswer(${index}, 'C')">
+            <span class="option-key">C</span>
+            <span>${opts.C || ''}</span>
+          </div>
+          <div class="option-item ${selectedOption === 'D' ? 'selected' : ''}" onclick="selectAnswer(${index}, 'D')">
+            <span class="option-key">D</span>
+            <span>${opts.D || ''}</span>
+          </div>
+        </div>
+      `;
+
+      prevBtn.disabled = (index === 0);
+
+      if (index === questions.length - 1) {
+        nextBtn.innerText = "Шалгалт дуусгах";
+        nextBtn.className = "btn btn-success";
+        nextBtn.onclick = finishQuiz;
+      } else {
+        nextBtn.innerText = "Дараагийн →";
+        nextBtn.className = "btn btn-primary";
+        nextBtn.onclick = goToNextQuestion;
+      }
+    }
+
+    function selectAnswer(qIndex, key) {
+      userAnswers[qIndex] = key;
+      displayQuestion(qIndex);
+    }
+
+    function goToNextQuestion() {
+      if (currentIndex < questions.length - 1) {
+        currentIndex++;
+        displayQuestion(currentIndex);
+      }
+    }
+
+    function goToPreviousQuestion() {
+      if (currentIndex > 0) {
+        currentIndex--;
+        displayQuestion(currentIndex);
+      }
+    }
+
+    function finishQuiz() {
+      let score = 0;
+      questions.forEach((q, idx) => {
+        if (userAnswers[idx] && userAnswers[idx] === q.correct) {
+          score++;
+        }
+      });
+
+      const percentage = Math.round((score / questions.length) * 100);
+
+      const app = document.getElementById('quizApp');
+      app.innerHTML = `
+        <div style="text-align: center; padding: 20px 0;">
+          <h2 style="color: #28a745; margin-bottom: 5px;">Шалгалт дууслаа!</h2>
+          <p style="font-size: 16px; color: #6c757d; margin-bottom: 20px;">Сурагч: <b>${studentName}</b></p>
+          <div style="font-size: 48px; font-weight: bold; color: #007bff; margin: 15px 0;">
+            ${score} / ${questions.length} (${percentage}%)
+          </div>
+          <p style="color: #28a745; font-weight: bold;">Амжилттай хадгалагдлаа.</p>
+        </div>
+      `;
+    }
+
+    function showError(message) {
+      const app = document.getElementById('quizApp');
+      app.innerHTML = `<div class="loading-state" style="color: #dc3545;"><h3>Алдаа</h3><p>${message}</p></div>`;
+    }
+  </script>
+</body>
+</html>

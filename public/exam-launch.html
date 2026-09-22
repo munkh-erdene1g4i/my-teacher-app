@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Камераар шалгалт авах</title>
+  <style>
+    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background-color: #1a1a24; color: #ffffff; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+    
+    .container { width: 100%; max-width: 1000px; display: grid; grid-template-columns: 1fr 320px; gap: 20px; }
+    @media (max-width: 800px) { .container { grid-template-columns: 1fr; } }
+
+    /* Камер харуулах хэсэг */
+    .scanner-section { background: #252636; border-radius: 12px; padding: 15px; display: flex; flex-direction: column; align-items: center; position: relative; }
+    .video-wrapper { width: 100%; height: 420px; background: #000; border-radius: 8px; overflow: hidden; position: relative; display: flex; justify-content: center; align-items: center; }
+    video { width: 100%; height: 100%; object-fit: cover; }
+    canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+    
+    /* Шалгалтын мэдээллийн хэсэг */
+    .info-section { background: #252636; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; }
+    .badge { background: #007bff; color: white; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+    .question-box { background: #1a1a24; padding: 15px; border-radius: 8px; border-left: 4px solid #007bff; margin: 15px 0; }
+    .question-text { font-size: 16px; margin-top: 8px; line-height: 1.4; color: #e1e1e1; }
+    
+    /* Товчлуурууд */
+    .btn { padding: 12px 20px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 14px; width: 100%; }
+    .btn-primary { background: #007bff; color: white; }
+    .btn-primary:hover { background: #0056b3; }
+    .btn-success { background: #28a745; color: white; }
+    .btn-secondary { background: #495057; color: white; }
+    .btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .nav-btns { display: flex; gap: 10px; margin-top: 15px; }
+    .status-msg { margin-top: 10px; font-size: 13px; color: #28a745; text-align: center; }
+    .error-msg { color: #dc3545; text-align: center; font-size: 14px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+
+  <h2 style="margin-top: 0; color: #007bff;">📷 Камераар карт уншуулах хэсэг</h2>
+
+  <div class="container">
+    <!-- ЗҮҮН: Камерийн цонх -->
+    <div class="scanner-section">
+      <div class="video-wrapper">
+        <video id="webcam" autoplay playsinline muted></video>
+        <canvas id="overlayCanvas"></canvas>
+        <div id="cameraPlaceholder" style="position: absolute; text-align: center; color: #aaa;">
+          <p>📷 Камер нээгдэхийг хүлээж байна...</p>
+        </div>
+      </div>
+      <div id="cameraError" class="error-msg"></div>
+    </div>
+
+    <!-- БАРУУН: Асуулт болон удирдлагын хэсэг -->
+    <div class="info-section">
+      <div>
+        <span class="badge" id="quizTitleBadge">Шалгалт</span>
+        <h3 style="margin: 10px 0 5px 0;" id="progressText">Асуулт 1 / -</h3>
+
+        <div class="question-box">
+          <small style="color: #888;">Идэвхтэй асуулт:</small>
+          <div class="question-text" id="questionDisplay">Асуултууд ачаалж байна...</div>
+        </div>
+
+        <div class="status-msg" id="scanStatus">
+          🔄 Карт хайж байна... Картаа камерт харуулна уу.
+        </div>
+      </div>
+
+      <div>
+        <div class="nav-btns">
+          <button class="btn btn-secondary" id="prevBtn" onclick="prevQuestion()" disabled>← Өмнөх</button>
+          <button class="btn btn-primary" id="nextBtn" onclick="nextQuestion()">Дараагийн →</button>
+        </div>
+        <button class="btn btn-success" style="margin-top: 10px;" onclick="finishScanSession()">Шалгалт дуусгах</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let video = document.getElementById('webcam');
+    let canvas = document.getElementById('overlayCanvas');
+    let ctx = canvas.getContext('2d');
+    
+    let questions = [];
+    let currentIndex = 0;
+    let isCameraActive = false;
+
+    // 1. Камерыг нээж ажиллуулах функц
+    async function startCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: false
+        });
+        
+        video.srcObject = stream;
+        video.onloadedmetadata = () => {
+          video.play();
+          document.getElementById('cameraPlaceholder').style.display = 'none';
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          isCameraActive = true;
+          requestAnimationFrame(processCameraFrame); // Кадрыг тасралтгүй боловсруулна
+        };
+      } catch (err) {
+        document.getElementById('cameraError').innerText = "Камер нээхэд алдаа гарлаа: " + err.message + " (Зөвшөөрөл шалгана уу)";
+      }
+    }
+
+    // 2. Серверээс асуултуудыг татан авах
+    async function loadQuestions() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const teacherId = urlParams.get('teacherId') || user.id;
+      const quizId = urlParams.get('quizId');
+
+      if (!teacherId) {
+        document.getElementById('questionDisplay').innerText = "Багшийн мэдээлэл олдсонгүй.";
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/teacher/questions/${teacherId}?t=${Date.now()}`);
+        if (!res.ok) throw new Error("Дата татахад алдаа гарлаа.");
+        
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          const quiz = quizId ? (data.find(q => String(q.id) === String(quizId)) || data[0]) : data[0];
+          document.getElementById('quizTitleBadge').innerText = quiz.title || "Шалгалт";
+          questions = quiz.items || [];
+
+          if (questions.length > 0) {
+            displayCurrentQuestion(0);
+          } else {
+            document.getElementById('questionDisplay').innerText = "Асуулт олдсонгүй.";
+          }
+        }
+      } catch (err) {
+        document.getElementById('questionDisplay').innerText = "Алдаа: " + err.message;
+      }
+    }
+
+    // 3. Тухайн индексийн асуултыг дэлгэцэд зурах
+    function displayCurrentQuestion(index) {
+      if (!questions || !questions[index]) return;
+      
+      currentIndex = index;
+      const q = questions[index];
+      
+      document.getElementById('progressText').innerText = `Асуулт ${index + 1} / ${questions.length}`;
+      document.getElementById('questionDisplay').innerHTML = `<b>${index + 1}.</b> ${q.question || q.text || ''}`;
+
+      document.getElementById('prevBtn').disabled = (index === 0);
+      const nextBtn = document.getElementById('nextBtn');
+      
+      if (index === questions.length - 1) {
+        nextBtn.innerText = "Дуусгах";
+      } else {
+        nextBtn.innerText = "Дараагийн →";
+      }
+    }
+
+    // 4. Камерийн кадр бүрийг боловсруулах (Картын хязгаарыг таних / зурах)
+    function processCameraFrame() {
+      if (isCameraActive && video.readyState === video.HAVE_ENOUGH_DATA) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Камерийн дэлгэцийн голд карт байрлуулах чиглүүлэгч хүрээ зурах
+        const guideWidth = canvas.width * 0.6;
+        const guideHeight = canvas.height * 0.7;
+        const guideX = (canvas.width - guideWidth) / 2;
+        const guideY = (canvas.height - guideHeight) / 2;
+
+        ctx.strokeStyle = "#007bff";
+        ctx.lineWidth = 3;
+        ctx.setLineDash([10, 10]); // Тасархай шугам
+        ctx.strokeRect(guideX, guideY, guideWidth, guideHeight);
+        
+        ctx.fillStyle = "#007bff";
+        ctx.font = "16px Segoe UI";
+        ctx.fillText("Хариултын картыг энд тааруулна уу", guideX + 20, guideY - 10);
+      }
+      
+      requestAnimationFrame(processCameraFrame);
+    }
+
+    function nextQuestion() {
+      if (currentIndex < questions.length - 1) {
+        displayCurrentQuestion(currentIndex + 1);
+      }
+    }
+
+    function prevQuestion() {
+      if (currentIndex > 0) {
+        displayCurrentQuestion(currentIndex - 1);
+      }
+    }
+
+    function finishScanSession() {
+      alert("Шалгалтын карт уншуулах ажилбар дууслаа.");
+      window.location.href = "/dashboard.html";
+    }
+
+    // Хуудас ачаалагдах үед Камер болон Асуултуудыг нээнэ
+    window.addEventListener('DOMContentLoaded', () => {
+      startCamera();
+      loadQuestions();
+    });
+  </script>
+</body>
+</html>
