@@ -7,7 +7,6 @@ const path = require('path');
 const app = express();
 
 // 💡 1. ОНЛАЙН СЕРВЕРИЙН ПОРТ ТОХИРУУЛГА
-// Render гэх мэт сервер дээр process.env.PORT-ийг ашиглана, локал дээр 3000 портыг ашиглана.
 const PORT = process.env.PORT || 3000;
 const DB_FILE = path.join(__dirname, 'database.json');
 
@@ -15,10 +14,10 @@ const DB_FILE = path.join(__dirname, 'database.json');
 app.use(cors());
 app.use(express.json());
 
-// 💡 2. public ХАВТАСНЫ СТАТИК ФАЙЛУУДЫГ (HTML, CSS, JS) УНШИХ
+// public ХАВТАСНЫ СТАТИК ФАЙЛУУДЫГ (HTML, CSS, JS) УНШИХ
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 3. Өгөгдлийн бааз (database.json) шалгаж үүсгэх
+// Өгөгдлийн бааз (database.json) шалгаж үүсгэх
 if (!fs.existsSync(DB_FILE)) {
   const initialData = {
     users: [
@@ -49,7 +48,9 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-// --- 2. Админ: Багш үүсгэх болон жагсаалт авах ---
+// --- 2. Админ: Багш нарыг удирдах API-ууд ---
+
+// 2.1. Бүх багш нарын жагсаалтыг авах
 app.get('/api/admin/teachers', async (req, res) => {
   try {
     const db = await jsonfile.readFile(DB_FILE);
@@ -60,21 +61,102 @@ app.get('/api/admin/teachers', async (req, res) => {
   }
 });
 
+// 2.2. Шинэ багш бүртгэх
 app.post('/api/admin/teachers', async (req, res) => {
   try {
     const { username, password } = req.body;
+
+    if (!username || !password || username.trim() === '' || password.trim() === '') {
+      return res.status(400).json({ success: false, message: "Хэрэглэгчийн нэр болон нууц үгийг бүрэн оруулна уу!" });
+    }
+
     const db = await jsonfile.readFile(DB_FILE);
 
-    if (db.users.some(u => u.username === username)) {
+    if (db.users.some(u => u.username.toLowerCase() === username.trim().toLowerCase())) {
       return res.status(400).json({ success: false, message: "Багшийн нэр давхцаж байна!" });
     }
 
-    const newTeacher = { id: 't_' + Date.now(), username, password, role: 'TEACHER' };
+    const newTeacher = { 
+      id: 't_' + Date.now(), 
+      username: username.trim(), 
+      password: password.trim(), 
+      role: 'TEACHER' 
+    };
+
     db.users.push(newTeacher);
     await jsonfile.writeFile(DB_FILE, db, { spaces: 2 });
     res.json({ success: true, message: "Багш амжилттай бүртгэгдлээ." });
   } catch (error) {
     res.status(500).json({ success: false, message: "Серверийн алдаа гарлаа." });
+  }
+});
+
+// Багшийн нууц үгийг солих API
+app.put('/api/admin/teachers/:id/password', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { newPassword } = req.body;
+
+    console.log(`[PASSWORD CHANGE] Солих ID: ${id}, Шинэ нууц үг: ${newPassword}`);
+
+    // 1. Нууц үг ирсэн эсэхийг шалгах
+    if (!newPassword || newPassword.trim() === '') {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Шинэ нууц үг хоосон байж болохгүй!' 
+      });
+    }
+
+    const db = await jsonfile.readFile(DB_FILE);
+    
+    // 2. Тухайн ID-тай багшийг хайх
+    const teacher = db.users.find(u => String(u.id) === String(id) && u.role === 'TEACHER');
+
+    if (!teacher) {
+      console.log(`[PASSWORD CHANGE ERROR] ID: ${id} бүхий багш олдсонгүй.`);
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Системээс тухайн багшийн бүртгэл олдсонгүй!' 
+      });
+    }
+
+    // 3. Нууц үгийг шинэчлэн хадгалах
+    teacher.password = newPassword.trim();
+    await jsonfile.writeFile(DB_FILE, db, { spaces: 2 });
+
+    console.log(`[PASSWORD CHANGE SUCCESS] Багш: ${teacher.username}-ийн нууц үг амжилттай солигдлоо.`);
+    res.json({ 
+      success: true, 
+      message: `${teacher.username} багшийн нууц үг амжилттай шинэчлэгдлээ.` 
+    });
+
+  } catch (error) {
+    console.error('[SERVER ERROR]', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Сервер дээр нууц үг солиход алдаа гарлаа.' 
+    });
+  }
+});
+
+
+// 2.4. Багш устгах
+app.delete('/api/admin/teachers/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const db = await jsonfile.readFile(DB_FILE);
+
+    const index = db.users.findIndex(u => u.id === id && u.role === 'TEACHER');
+    if (index === -1) {
+      return res.status(404).json({ success: false, message: 'Багш олдсонгүй' });
+    }
+
+    db.users.splice(index, 1);
+    await jsonfile.writeFile(DB_FILE, db, { spaces: 2 });
+
+    res.json({ success: true, message: 'Багшийг амжилттай устгалаа' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Багш устгахад алдаа гарлаа' });
   }
 });
 
@@ -198,7 +280,7 @@ app.delete('/api/teacher/questions/:quizId', async (req, res) => {
   }
 });
 
-// --- 5. Багш: Дүн ба анализ хадгалах, харах ---
+// --- 5. Багш: Дүн ба анализ хадгалах, харах, устгах ---
 app.get('/api/teacher/results/:teacherId', async (req, res) => {
   try {
     const db = await jsonfile.readFile(DB_FILE);
@@ -231,7 +313,21 @@ app.post('/api/teacher/results', async (req, res) => {
   }
 });
 
-// 💡 6. СЕРВЕР АЖИЛЛУУЛАХ
+app.delete('/api/teacher/results/:resultId', async (req, res) => {
+  try {
+    const { resultId } = req.params;
+    const db = await jsonfile.readFile(DB_FILE);
+
+    db.results = db.results.filter(r => r.id !== resultId);
+    await jsonfile.writeFile(DB_FILE, db, { spaces: 2 });
+
+    res.json({ success: true, message: 'Шалгалтын дүн амжилттай устгагдлаа.' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Серверийн алдаа гарлаа.' });
+  }
+});
+
+// ================= 💡 6. СЕРВЕР АЖИЛЛУУЛАХ (ХАМГИЙН ТӨГСГӨЛД) =================
 app.listen(PORT, () => {
   console.log(`🚀 Сервер амжилттай асаалаа: http://localhost:${PORT}`);
 });

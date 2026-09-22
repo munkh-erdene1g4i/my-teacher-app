@@ -11,6 +11,12 @@
       "username": "teacher",
       "password": "123",
       "role": "TEACHER"
+    },
+    {
+      "id": "t_1790072324478",
+      "username": "dulmaa",
+      "password": "1234",
+      "role": "TEACHER"
     }
   ],
   "classes": [
@@ -211,28 +217,6 @@
         {
           "studentName": "Тэнүүн",
           "question": "Гоо хэнд сайн бэ?",
-          "answer": "Хоосон",
-          "isCorrect": false
-        }
-      ]
-    },
-    {
-      "id": "r_1790063829818",
-      "teacherId": "t_1790057978939",
-      "classId": "c_1790062066275",
-      "className": "10Б",
-      "quizTitle": "soyloo",
-      "date": "2026.09.22",
-      "records": [
-        {
-          "studentName": "Соёлоо",
-          "question": "Монгол улсын нийслэл ямар хот вэ?",
-          "answer": "Хоосон",
-          "isCorrect": false
-        },
-        {
-          "studentName": "Тэнүүн",
-          "question": "Монгол улсын нийслэл ямар хот вэ?",
           "answer": "Хоосон",
           "isCorrect": false
         }
