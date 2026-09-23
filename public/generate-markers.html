@@ -2,230 +2,336 @@
 <html lang="mn">
 <head>
   <meta charset="UTF-8">
-  <title>Plickers - ArUco Карт Хэвлэх</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ArUco Маркер Бөөнд нь Үүсгэгч</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-      background: #f4f4f9;
-      color: #333;
-    }
+    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background-color: #f4f6f9; margin: 0; padding: 20px; }
     
-    /* Хэвлэхэд нуугдах тохиргооны хэсэг */
-    .no-print {
-      background: white;
-      padding: 15px 20px;
-      border-radius: 8px;
-      margin-bottom: 20px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    .card { 
+      background: #ffffff; 
+      padding: 20px 25px; 
+      border-radius: 12px; 
+      box-shadow: 0 4px 15px rgba(0,0,0,0.08); 
+      max-width: 800px; 
+      margin: 0 auto 20px auto; 
     }
-    .controls {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      margin-top: 10px;
-    }
-    input[type="number"] {
-      width: 80px;
-      padding: 8px;
-      font-size: 16px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-    }
-    button {
-      padding: 9px 16px;
-      font-size: 15px;
-      background: #007bff;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: bold;
-    }
-    button:hover { opacity: 0.9; }
+    h2 { color: #2c3e50; margin-top: 0; font-size: 22px; text-align: center; }
+    
+    .form-row { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 15px; }
+    .form-group { flex: 1; min-width: 150px; }
+    label { font-size: 14px; font-weight: bold; color: #495057; display: block; margin-bottom: 5px; }
+    input[type="number"], select { width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 6px; font-size: 15px; }
+    
+    .checkbox-group { display: flex; align-items: center; gap: 10px; margin: 15px 0; background: #eef5ff; padding: 12px; border-radius: 8px; border: 1px solid #b8daff; }
+    .checkbox-group input { width: 18px; height: 18px; cursor: pointer; }
+    .checkbox-group label { margin: 0; cursor: pointer; color: #004085; }
+    
+    .btn-group { display: flex; gap: 10px; }
+    .btn { flex: 1; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 15px; transition: background 0.2s; }
+    .btn-primary { background: #007bff; color: white; }
+    .btn-primary:hover { background: #0056b3; }
+    .btn-success { background: #28a745; color: white; }
+    .btn-success:hover { background: #1e7e34; }
+    .btn-secondary { background: #6c757d; color: white; }
+    .btn-secondary:hover { background: #5a6268; }
 
-    /* Картнуудын байршил (Дэлгэц дээр) */
+    /* 🖥️ ДЭЛГЭЦ ДЭЭР ХАРАГДАХ СҮЛЖЭЭ (Тогтмол жижиг зургууд) */
     .markers-container {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      justify-content: center;
+      max-width: 1200px;
+      margin: 0 auto;
     }
 
-    /* Нэг картны үндсэн дизайн */
-    .card {
+    /* Дэлгэц дээр А4 хуудасны хүрээг харуулахгүй, шууд сүлжээ болгоно */
+    .page-wrapper {
+      display: contents;
+    }
+
+    /* Дэлгэц дээрх картын ТОГТМОЛ хэмжээ (Сонголтоос хамаарч өөрчлөгдөхгүй) */
+    .marker-box {
+      width: 180px; 
       background: white;
-      border: 2px dashed #bbb;
-      border-radius: 10px;
-      padding: 15px;
+      border: 1px solid #e0e0e0;
+      padding: 10px;
+      border-radius: 8px;
+      text-align: center;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      box-sizing: border-box;
-      page-break-inside: avoid;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+      transition: transform 0.1s ease;
     }
+    .marker-box:hover { transform: translateY(-2px); }
 
-    .card-title {
-      font-size: 18px;
-      font-weight: bold;
-      margin-bottom: 8px;
-    }
+    .marker-label { font-size: 13px; font-weight: bold; margin-top: 6px; color: #333; }
+    canvas { width: 100%; height: auto; }
 
-    .marker-box {
-      position: relative;
-      width: 230px;
-      height: 230px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    canvas {
-      width: 170px;
-      height: 170px;
-    }
-
-    /* A, B, C, D үсгийн байрлал ба ТОД ӨНГӨНҮҮД */
-    .label {
-      position: absolute;
-      font-size: 26px;
-      font-weight: 900;
-      text-shadow: 0px 0px 2px rgba(255,255,255,0.8);
-    }
-    .label-A {
-      top: 0px;
-      left: 50%;
-      transform: translateX(-50%);
-      color: #d97706; /* Улбар шар / Шар */
-    }
-    .label-B {
-      right: 2px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: #2563eb; /* Цэнхэр */
-    }
-    .label-C {
-      bottom: 0px;
-      left: 50%;
-      transform: translateX(-50%);
-      color: #16a34a; /* Ногоон */
-    }
-    .label-D {
-      left: 2px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: #dc2626; /* Улаан */
-    }
-
-    /* 🖨️ ПРИНТЕРЭЭР ХЭВЛЭХ ҮЕИЙН ТОХИРГОО (1 НҮҮРЭНД 4 КАРТ) */
+    /* 🖨️ А4 ЦААСАН ДЭЭР ХЭВЛЭХ ҮЕИЙН ТОХИРГОО (`@media print`) */
     @media print {
-      @page {
-        size: A4 portrait;
-        margin: 10mm;
+      @page { 
+        size: A4 portrait; 
+        margin: 5mm; 
       }
-      .no-print { display: none !important; }
-      body {
-        background: white;
-        margin: 0;
-        padding: 0;
+      
+      html, body { 
+        width: 100%;
+        height: 100%;
+        background: white; 
+        padding: 0; 
+        margin: 0; 
       }
+      
+      .card { display: none !important; }
+
       .markers-container {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        grid-template-rows: repeat(2, 130mm); /* Нэг нүүрэнд яг 2 мөр байхаар тохируулав */
-        gap: 10mm;
+        display: block !important;
+        padding: 0;
+        margin: 0;
+        max-width: none;
       }
-      .card {
-        border: 1px dashed #888;
-        border-radius: 6px;
-        height: 130mm;
-        padding: 10px;
-        page-break-inside: avoid;
-      }
-      /* 4 карт тутамд дараагийн A4 хуудас руу шилжинэ */
-      .card:nth-child(4n) {
+
+      /* Хэвлэх үед А4 хуудасны бүтцийг идэвхжүүлнэ */
+      .page-wrapper {
+        display: grid !important;
         page-break-after: always;
+        break-after: page;
+        height: 98vh; 
+        width: 100%;
+        padding: 2mm;
+        margin: 0;
+        gap: 4mm;
+        box-sizing: border-box;
+      }
+
+      .page-wrapper:last-child {
+        page-break-after: auto;
+        break-after: auto;
+      }
+
+      /* Сонгосон тооноос хамаарч А4-ийг хэвлэх үед хуваах */
+      .page-wrapper[data-per-page="1"] { grid-template-columns: 1fr; grid-template-rows: 1fr; }
+      .page-wrapper[data-per-page="2"] { grid-template-columns: 1fr; grid-template-rows: repeat(2, 1fr); }
+      .page-wrapper[data-per-page="4"] { grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr); }
+      .page-wrapper[data-per-page="8"] { grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(4, 1fr); }
+
+      /* Хэвлэх үед картыг А4 цаасны нүдэнд сунгаж өгнө */
+      .marker-box { 
+        width: 100% !important;
+        height: 100% !important;
+        border: 1px dashed #aaaaaa !important;
+        padding: 4px !important; 
+        background: white !important;
+        box-shadow: none !important;
+        transform: none !important;
+        break-inside: avoid; 
+        page-break-inside: avoid;
+        display: flex !important;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
+      }
+
+      canvas {
+        max-width: 92% !important;
+        max-height: 85% !important;
+        object-fit: contain;
+      }
+
+      .marker-label {
+        font-size: 10pt !important;
+        margin-top: 4px !important;
       }
     }
   </style>
 </head>
 <body>
 
-  <div class="no-print">
-    <h2>🖨️ ArUco Маркер Карт Хэвлэх (1 нүүрэнд 4 карт)</h2>
-    <p>Сурагчдын тоог оруулан "Карт үүсгэх" товчийг дарна уу.</p>
-    <div class="controls">
-      <label for="markerCount">Сурагчдын тоо:</label>
-      <input type="number" id="markerCount" value="8" min="1" max="100">
-      <button onclick="generateMarkers()">Карт Үүсгэх</button>
-      <button onclick="window.print()" style="background: #28a745;">🖨️ Хэвлэх (Print)</button>
-      <button onclick="window.location.href='teacher.html'" style="background: #6c757d;">← Буцах</button>
+  <div class="card">
+    <h2>ArUco Маркер Бөөнд нь Үүсгэгч</h2>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="startId">Эхлэх ID:</label>
+        <input type="number" id="startId" value="0" min="0" max="100" onchange="drawBatchMarkers()">
+      </div>
+      <div class="form-group">
+        <label for="endId">Дуусах ID:</label>
+        <input type="number" id="endId" value="11" min="0" max="100" onchange="drawBatchMarkers()">
+      </div>
+      <div class="form-group">
+        <label for="perPage">А4 нүүрэнд гарах тоо:</label>
+        <select id="perPage" onchange="drawBatchMarkers()">
+          <option value="1">1 ширхэг (Цаас бүтэн)</option>
+          <option value="2" selected>2 ширхэг (1x2)</option>
+          <option value="4">4 ширхэг (2x2)</option>
+          <option value="8">8 ширхэг (2x4)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="checkbox-group">
+      <input type="checkbox" id="inkSaver" checked onchange="drawBatchMarkers()">
+      <label for="inkSaver"><strong>🖨️ Хор хэмнэх горим</strong> (Өнгө инвертлэх / Inverse colors)</label>
+    </div>
+
+    <div class="btn-group">
+      <button class="btn btn-secondary" onclick="goBack()">← Буцах</button>
+      <button class="btn btn-primary" onclick="drawBatchMarkers()">Шинэчлэх</button>
+      <button class="btn btn-success" onclick="window.print()">🖨️ Бөөнд нь хэвлэх (Print / PDF)</button>
     </div>
   </div>
 
-  <div id="container" class="markers-container"></div>
+  <div id="markersContainer" class="markers-container"></div>
 
   <script>
-    // js-aruco сантай шууд таарах кодын матриц
-    const ARUCO_IDS = [
-      [1, 0, 0, 0, 0],
-      [1, 0, 1, 1, 1],
-      [0, 1, 0, 0, 1],
-      [0, 1, 1, 1, 0]
+    const ARUCO_4X4_DICT = [
+      [1,0,1,1, 0,1,0,1, 0,0,0,0, 1,0,1,0], // ID 0
+      [1,0,0,1, 1,1,0,1, 1,0,1,0, 0,1,1,0], // ID 1
+      [1,0,1,0, 0,0,0,1, 1,0,1,1, 0,1,0,1], // ID 2
+      [0,1,0,1, 1,0,1,0, 0,1,1,1, 1,0,0,0], // ID 3
+      [1,1,0,0, 0,1,1,0, 1,0,0,1, 0,0,1,1], // ID 4
+      [1,0,0,1, 0,0,1,1, 1,1,0,0, 0,1,0,1], // ID 5
     ];
 
-    // Canvas дээр ArUco кодыг зурах функц
-    function drawArucoMarker(canvas, id) {
+    function goBack() {
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        alert("Өмнөх хуудас олдсонгүй.");
+      }
+    }
+
+    function getMarkerBits(id) {
+      if (ARUCO_4X4_DICT[id]) {
+        return ARUCO_4X4_DICT[id];
+      }
+      const bits = [];
+      let seed = (id + 1) * 1103515245 + 12345;
+      for (let i = 0; i < 16; i++) {
+        seed = (seed * 1664525 + 1013904223) % 4294967296;
+        bits.push((seed >> 16) & 1);
+      }
+      return bits;
+    }
+
+    function renderSingleMarker(canvas, markerId, canvasSize, isInkSaver) {
+      canvas.width = canvasSize;
+      canvas.height = canvasSize;
       const ctx = canvas.getContext('2d');
-      const gridSize = 7;
-      const cellSize = canvas.width / gridSize;
 
-      ctx.fillStyle = 'black';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, canvasSize, canvasSize);
 
-      const bits = [
-        (id >> 8) & 3,
-        (id >> 6) & 3,
-        (id >> 4) & 3,
-        (id >> 2) & 3,
-        id & 3
-      ];
+      const margin = Math.floor(canvasSize * 0.14);
+      const drawAreaSize = canvasSize - (margin * 2);
 
-      for (let row = 0; row < 5; row++) {
-        const rowBits = ARUCO_IDS[bits[row]];
-        for (let col = 0; col < 5; col++) {
-          ctx.fillStyle = rowBits[col] === 1 ? 'white' : 'black';
-          ctx.fillRect((col + 1) * cellSize, (row + 1) * cellSize, cellSize, cellSize);
+      const gridSize = 6;
+      const cellSize = drawAreaSize / gridSize;
+      const bits = getMarkerBits(markerId);
+
+      const matrix = [];
+      for (let r = 0; r < gridSize; r++) {
+        matrix[r] = [];
+        for (let c = 0; c < gridSize; c++) {
+          if (r === 0 || r === gridSize - 1 || c === 0 || c === gridSize - 1) {
+            matrix[r][c] = 0;
+          } else {
+            const bitIndex = (r - 1) * 4 + (c - 1);
+            matrix[r][c] = bits[bitIndex];
+          }
         }
       }
+
+      for (let r = 0; r < gridSize; r++) {
+        for (let c = 0; c < gridSize; c++) {
+          let cellVal = matrix[r][c];
+
+          if (isInkSaver) {
+            cellVal = cellVal === 0 ? 1 : 0;
+          }
+
+          if (cellVal === 0) {
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(
+              margin + c * cellSize, 
+              margin + r * cellSize, 
+              cellSize, 
+              cellSize
+            );
+          }
+        }
+      }
+
+      if (isInkSaver) {
+        ctx.strokeStyle = '#cccccc';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(margin, margin, drawAreaSize, drawAreaSize);
+      }
+
+      // ABCD өнгөт үсгүүд зурах
+      const fontSize = Math.floor(margin * 0.75);
+      ctx.font = `bold ${fontSize}px 'Segoe UI', Arial, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      ctx.fillStyle = '#E63946'; // A (Улаан)
+      ctx.fillText('A', canvasSize / 2, margin / 2);
+
+      ctx.fillStyle = '#1D3557'; // B (Цэнхэр)
+      ctx.fillText('B', canvasSize - (margin / 2), canvasSize / 2);
+
+      ctx.fillStyle = '#2A9D8F'; // C (Ногоон)
+      ctx.fillText('C', canvasSize / 2, canvasSize - (margin / 2));
+
+      ctx.fillStyle = '#F4A261'; // D (Улбар шар)
+      ctx.fillText('D', margin / 2, canvasSize / 2);
     }
 
-    function generateMarkers() {
-      const count = parseInt(document.getElementById('markerCount').value) || 8;
-      const container = document.getElementById('container');
-      container.innerHTML = '';
+    function drawBatchMarkers() {
+      const startId = parseInt(document.getElementById('startId').value) || 0;
+      const endId = parseInt(document.getElementById('endId').value) || 0;
+      const perPage = parseInt(document.getElementById('perPage').value) || 2;
+      const isInkSaver = document.getElementById('inkSaver').checked;
 
-      for (let id = 1; id <= count; id++) {
-        const card = document.createElement('div');
-        card.className = 'card';
+      const renderPixelSize = 600; // Хэвлэхэд зориулсан тод нягтрал
 
-        card.innerHTML = `
-          <div class="card-title">Сурагч / Маркер #${id}</div>
-          <div class="marker-box">
-            <span class="label label-A">A</span>
-            <span class="label label-B">B</span>
-            <span class="label label-C">C</span>
-            <span class="label label-D">D</span>
-            <canvas id="marker-${id}" width="200" height="200"></canvas>
-          </div>
-        `;
+      const container = document.getElementById('markersContainer');
+      container.innerHTML = ''; 
 
-        container.appendChild(card);
-        drawArucoMarker(document.getElementById(`marker-${id}`), id);
+      const realStart = Math.min(startId, endId);
+      const realEnd = Math.max(startId, endId);
+
+      for (let i = realStart; i <= realEnd; i += perPage) {
+        const pageDiv = document.createElement('div');
+        pageDiv.className = 'page-wrapper';
+        pageDiv.dataset.perPage = perPage;
+
+        for (let j = i; j < Math.min(i + perPage, realEnd + 1); j++) {
+          const box = document.createElement('div');
+          box.className = 'marker-box';
+
+          const canvas = document.createElement('canvas');
+          renderSingleMarker(canvas, j, renderPixelSize, isInkSaver);
+
+          const label = document.createElement('div');
+          label.className = 'marker-label';
+          label.innerText = `ID: ${j}`;
+
+          box.appendChild(canvas);
+          box.appendChild(label);
+          pageDiv.appendChild(box);
+        }
+
+        container.appendChild(pageDiv);
       }
     }
 
-    window.onload = generateMarkers;
+    window.onload = drawBatchMarkers;
   </script>
 </body>
 </html>
