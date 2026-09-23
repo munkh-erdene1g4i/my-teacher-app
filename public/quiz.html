@@ -48,20 +48,21 @@
     window.addEventListener('DOMContentLoaded', () => {
       const urlParams = new URLSearchParams(window.location.search);
       const teacherId = urlParams.get('teacherId');
+      const quizId = urlParams.get('quizId'); // URL-аас сонгосон шалгалтын quizId-г уншиж авна
 
       if (teacherId) {
-        fetchQuizQuestions(teacherId);
+        fetchQuizQuestions(teacherId, quizId);
       } else {
         const user = JSON.parse(localStorage.getItem('user'));
         if (user && user.id) {
-          fetchQuizQuestions(user.id);
+          fetchQuizQuestions(user.id, quizId);
         } else {
           showError("Шалгалтын тохиргоо дутуу байна.");
         }
       }
     });
 
-    async function fetchQuizQuestions(teacherId) {
+    async function fetchQuizQuestions(teacherId, quizId) {
       try {
         const response = await fetch(`/api/teacher/questions/${teacherId}?t=${Date.now()}`);
         if (!response.ok) throw new Error("Асуулт ачаалахад алдаа гарлаа.");
@@ -69,7 +70,8 @@
         const data = await response.json();
 
         if (Array.isArray(data) && data.length > 0) {
-          quizData = data[0];
+          // quizId дамжиж ирсэн бол тухайн ID-тай шалгалтыг шүүж авна
+          quizData = quizId ? (data.find(q => String(q.id) === String(quizId)) || data[0]) : data[0];
           questions = quizData.items || [];
 
           if (questions.length > 0) {
